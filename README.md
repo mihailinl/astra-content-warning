@@ -1,6 +1,6 @@
 # Astra for Content Warning
 
-A game integration for Astra on the Astra Unity foundation: it makes Astra better in Content Warning.
+A game integration for Astra on the [Astra Unity foundation](https://github.com/mihailinl/astra-bepinex): it makes Astra better in Content Warning.
 
 ## Build
 
@@ -28,3 +28,5 @@ per game and updates by itself.
 - Never touch rendering, the socket or the frame ring. The foundation owns them; if you need
   something from them, open an issue on the foundation.
 - Single-player and co-op games without anti-cheat only.
+
+License: MIT.
