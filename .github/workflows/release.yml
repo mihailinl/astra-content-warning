@@ -30,17 +30,11 @@ env:
   BEPINEX_ZIP_URL: "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.5/BepInEx_win_x64_5.4.23.5.zip"
   BEPINEX_ZIP_SHA256: "82f9878551030f54657792c0740d9d51a09500eeae1fba21106b0c441e6732c4"
 
-  # TODO(foundation release): astra-bepinex has no GitHub release yet (GAME-INTEGRATION-MANIFEST.md
-  # §6 assumes one). Point these at its first release asset: a zip whose root IS a BepInEx/plugins/
-  # Astra/ folder (Astra.Unity.dll, Astra.Bridge.Core.dll, Astra.Urp17.dll, Astra.Hdrp.dll,
-  # astra-item.json — exactly artifacts/foundation-mono/BepInEx/plugins/Astra/ from
-  # astra-bepinex/tools/pack.sh, zipped at that root), and fill in its real sha256. Until then the
-  # "download the foundation" step below 404s ON PURPOSE (no continue-on-error: a release built
-  # from a placeholder URL must fail loudly, not publish a broken astra-gi.zip).
-  # tools/make-astra-gi.sh proves the real layout locally today, from a foundation you built
-  # yourself with astra-bepinex/tools/pack.sh.
-  FOUNDATION_ASSET_URL: "https://github.com/mihailinl/astra-bepinex/releases/download/vTODO/astra-unity-foundation-mono.zip"
-  FOUNDATION_ASSET_SHA256: "TODO_FILL_IN_ONCE_THE_FOUNDATION_HAS_A_GITHUB_RELEASE"
+  # The foundation's Mono DLLs come from its runner release ("Astra for any Unity game"), whose zip
+  # root holds BepInEx/plugins/Astra/ — exactly the layout tools/make-astra-gi.sh reads. Bump both
+  # lines (and ASTRA_BEPINEX_REF above) together when this integration moves to a newer foundation.
+  FOUNDATION_ASSET_URL: "https://github.com/mihailinl/astra-bepinex/releases/download/v0.5.0/astra-gi.zip"
+  FOUNDATION_ASSET_SHA256: "7b58b749517c2ed745b2942f2e860df5f4e5af729185371a7a7aebcb9f25ae67"
 
 jobs:
   release:
@@ -84,7 +78,7 @@ jobs:
       - name: Unpack BepInEx
         run: mkdir -p bepinex-dist && unzip -q bepinex.zip -d bepinex-dist
 
-      - name: Download the Astra foundation (TODO until it has a GitHub release)
+      - name: Download the Astra foundation (its runner release, digest-pinned)
         run: |
           curl -sSL -o foundation.zip "${{ env.FOUNDATION_ASSET_URL }}"
           echo "${{ env.FOUNDATION_ASSET_SHA256 }}  foundation.zip" | sha256sum -c -
