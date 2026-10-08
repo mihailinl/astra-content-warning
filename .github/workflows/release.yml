@@ -19,12 +19,10 @@ env:
   PLUGIN_FOLDER: AstraContentWarning
   TFM: netstandard2.1
 
-  # The Astra SDK is not yet on nuget.org: built from a PINNED astra-bepinex commit into a local
-  # NuGet feed (still a build from PUBLIC inputs only — astra-bepinex is itself public). Bump this
-  # ref, and ASTRA_SDK_VERSION if the foundation's version changed, when this integration needs a
-  # newer SDK.
-  ASTRA_BEPINEX_REF: "b8d64c3dac9e921dcede1837aa5ce39344658756"
-  ASTRA_SDK_VERSION: "0.5.0-dev1"
+  # The Astra SDK (a compile-only reference) comes from the foundation's release until it is on
+  # nuget.org: the exact package packages.lock.json pins by content hash, digest-checked here too.
+  ASTRA_SDK_URL: "https://github.com/mihailinl/astra-bepinex/releases/download/v0.5.0/Astra.Unity.Sdk.0.5.0.nupkg"
+  ASTRA_SDK_SHA256: "17a3ac630ee3d602093d51dd658f8a94f797c0fcb15bc3a92d7027396d5d27ba"
 
   BEPINEX_VERSION: "5.4.23.5"
   BEPINEX_ZIP_URL: "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.5/BepInEx_win_x64_5.4.23.5.zip"
@@ -47,18 +45,11 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Check out astra-bepinex (SDK source, pinned commit)
-        uses: actions/checkout@v4
-        with:
-          repository: mihailinl/astra-bepinex
-          ref: ${{ env.ASTRA_BEPINEX_REF }}
-          path: astra-bepinex-sdk-src
-
-      - name: Pack the Astra SDK into a local feed
+      - name: Download the Astra SDK package (digest-pinned)
         run: |
-          dotnet pack astra-bepinex-sdk-src/src/Astra.Unity.Sdk -c Release \
-            -p:Version=${{ env.ASTRA_SDK_VERSION }} -p:ContinuousIntegrationBuild=true \
-            -o "${{ github.workspace }}/nuget-local"
+          mkdir -p "${{ github.workspace }}/nuget-local"
+          curl -sSL -o "${{ github.workspace }}/nuget-local/Astra.Unity.Sdk.0.5.0.nupkg" "${{ env.ASTRA_SDK_URL }}"
+          echo "${{ env.ASTRA_SDK_SHA256 }}  ${{ github.workspace }}/nuget-local/Astra.Unity.Sdk.0.5.0.nupkg" | sha256sum -c -
 
       - name: Add the local SDK feed
         run: dotnet nuget add source "${{ github.workspace }}/nuget-local" -n astra-local
