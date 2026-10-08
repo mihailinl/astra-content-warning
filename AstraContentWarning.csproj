@@ -27,7 +27,7 @@
   <Import Project="GameDir.props.user" Condition="Exists('GameDir.props.user')" />
 
   <ItemGroup>
-    <PackageReference Include="Astra.Unity.Sdk" Version="[0.5.0-dev1,1)" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Astra.Unity.Sdk" Version="[0.5.0,1)" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" PrivateAssets="all" />
     <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
     <PackageReference Include="UnityEngine.Modules" Version="2021.3.45" IncludeAssets="compile" PrivateAssets="all" />

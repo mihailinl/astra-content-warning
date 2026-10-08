@@ -4,9 +4,9 @@
     ".NETStandard,Version=v2.1": {
       "Astra.Unity.Sdk": {
         "type": "Direct",
-        "requested": "[0.5.0-dev1, 1.0.0)",
-        "resolved": "0.5.0-dev1",
-        "contentHash": "DtsnsL/+6CltKwxNaSjXh8mOj1L8PmS2CXLgsJmZNRBca5gzyFdKyheTvxHjRsma1vuAzNcpH6EDdEfKySUuFg=="
+        "requested": "[0.5.0, 1.0.0)",
+        "resolved": "0.5.0",
+        "contentHash": "XWKzNI3BFzFDFbL0qkV+NICy+k2XDbLdx+udSZrcE08xchIL2CvIvRrpvboNWhzcCElVIURfs/oHpRlL1nvX3Q=="
       },
       "BepInEx.Core": {
         "type": "Direct",

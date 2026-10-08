@@ -23,7 +23,7 @@ env:
   # NuGet feed (still a build from PUBLIC inputs only — astra-bepinex is itself public). Bump this
   # ref, and ASTRA_SDK_VERSION if the foundation's version changed, when this integration needs a
   # newer SDK.
-  ASTRA_BEPINEX_REF: "b75fb1e"
+  ASTRA_BEPINEX_REF: "b8d64c3dac9e921dcede1837aa5ce39344658756"
   ASTRA_SDK_VERSION: "0.5.0-dev1"
 
   BEPINEX_VERSION: "5.4.23.5"
