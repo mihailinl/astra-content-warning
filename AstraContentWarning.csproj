@@ -1,9 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Astra for Content Warning: a game integration on the Astra Unity foundation.
+  <!-- Astra for Content Warning: a game integration on the Astra Unity foundation, built from
+       PUBLIC inputs only (the Astra SDK, BepInEx.Core, UnityEngine.Modules) — never the game's own
+       files. Every game type (Player, PlayerData, MainCamera, VideoCamera, Mirror) is reached by
+       NAME at run time through Astra.Sdk.GameType (GAME-INTEGRATION-MANIFEST.md §6), so this
+       project has no GameDir and no reference to the game's assemblies at all.
        The foundation is installed in the game once and updates by itself, so it is referenced
-       COMPILE-ONLY here (ExcludeAssets="runtime") and never shipped with this plugin. The game's own
-       assemblies are referenced from its install folder, also never shipped: set GameDir below,
-       on the command line (-p:GameDir=…) or in GameDir.props.user (ignored by git). -->
+       COMPILE-ONLY here (ExcludeAssets="runtime") and never shipped with this plugin. -->
   <PropertyGroup>
     <!-- Unity 2021.2+ (netstandard2.1). A game on Unity 2021.1 or older: netstandard2.0. -->
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -15,31 +17,19 @@
     <Nullable>disable</Nullable>
     <BepInExPluginGuid>astra.content-warning</BepInExPluginGuid>
     <BepInExPluginName>Astra for Content Warning</BepInExPluginName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <SteamAppId>2881650</SteamAppId>
-    <RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+  <!-- This machine only (git ignores it): the Astra SDK's LOCAL feed, for building against an
+       unreleased foundation/SDK before it reaches NuGet. Never a game folder — this project no
+       longer references one at all. -->
   <Import Project="GameDir.props.user" Condition="Exists('GameDir.props.user')" />
-  <PropertyGroup>
-    <GameDir Condition="'$(GameDir)' == ''"></GameDir>
-  </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Astra.Unity.Sdk" Version="[0.3,1)" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Astra.Unity.Sdk" Version="[0.5.0-dev1,1)" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" PrivateAssets="all" />
     <PackageReference Include="BepInEx.Core" Version="5.4.21" PrivateAssets="all" />
-  </ItemGroup>
-
-  <!-- The game's Unity and code assemblies, compile-only. -->
-  <ItemGroup Condition="'$(GameDir)' != ''">
-    <!-- Every managed assembly of the game (its classes derive from its libraries' — Photon,
-         Mirror…), but not the .NET ones the SDK brings. -->
-    <Reference Include="$(GameDir)/*_Data/Managed/*.dll"
-               Exclude="$(GameDir)/*_Data/Managed/mscorlib.dll;$(GameDir)/*_Data/Managed/netstandard.dll;$(GameDir)/*_Data/Managed/System*.dll;$(GameDir)/*_Data/Managed/Mono.*.dll;$(GameDir)/*_Data/Managed/Microsoft.*.dll"
-               Private="false" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(GameDir)' == ''">
-    <!-- No game folder: Unity's API alone (code that names the game's own types needs GameDir). -->
     <PackageReference Include="UnityEngine.Modules" Version="2021.3.45" IncludeAssets="compile" PrivateAssets="all" />
   </ItemGroup>
 

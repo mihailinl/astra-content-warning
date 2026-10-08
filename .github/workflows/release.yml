@@ -1,0 +1,106 @@
+name: release
+# Builds astra-gi.zip from PUBLIC inputs only (the Astra SDK, BepInEx.Core, UnityEngine.Modules;
+# BepInEx's own release, digest-verified) — this workflow NEVER touches Lethal Company's files,
+# and never could: GitHub Actions has no copy of the game. See docs in astra-bepinex:
+# GAME-INTEGRATION-MANIFEST.md §6 and GAME-INTEGRATIONS.md §2 (the SDK, Astra.Sdk.GameType).
+#
+# Trigger: push a tag "v*". The resulting astra-gi.zip is attached to that tag's GitHub release —
+# that is the one file Astra's installer reads (GAME-INTEGRATION-MANIFEST.md §1).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write   # to attach astra-gi.zip to the release
+
+env:
+  ASSEMBLY_NAME: AstraContentWarning
+  PLUGIN_FOLDER: AstraContentWarning
+  TFM: netstandard2.1
+
+  # The Astra SDK is not yet on nuget.org: built from a PINNED astra-bepinex commit into a local
+  # NuGet feed (still a build from PUBLIC inputs only — astra-bepinex is itself public). Bump this
+  # ref, and ASTRA_SDK_VERSION if the foundation's version changed, when this integration needs a
+  # newer SDK.
+  ASTRA_BEPINEX_REF: "b75fb1e"
+  ASTRA_SDK_VERSION: "0.5.0-dev1"
+
+  BEPINEX_VERSION: "5.4.23.5"
+  BEPINEX_ZIP_URL: "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.5/BepInEx_win_x64_5.4.23.5.zip"
+  BEPINEX_ZIP_SHA256: "82f9878551030f54657792c0740d9d51a09500eeae1fba21106b0c441e6732c4"
+
+  # TODO(foundation release): astra-bepinex has no GitHub release yet (GAME-INTEGRATION-MANIFEST.md
+  # §6 assumes one). Point these at its first release asset: a zip whose root IS a BepInEx/plugins/
+  # Astra/ folder (Astra.Unity.dll, Astra.Bridge.Core.dll, Astra.Urp17.dll, Astra.Hdrp.dll,
+  # astra-item.json — exactly artifacts/foundation-mono/BepInEx/plugins/Astra/ from
+  # astra-bepinex/tools/pack.sh, zipped at that root), and fill in its real sha256. Until then the
+  # "download the foundation" step below 404s ON PURPOSE (no continue-on-error: a release built
+  # from a placeholder URL must fail loudly, not publish a broken astra-gi.zip).
+  # tools/make-astra-gi.sh proves the real layout locally today, from a foundation you built
+  # yourself with astra-bepinex/tools/pack.sh.
+  FOUNDATION_ASSET_URL: "https://github.com/mihailinl/astra-bepinex/releases/download/vTODO/astra-unity-foundation-mono.zip"
+  FOUNDATION_ASSET_SHA256: "TODO_FILL_IN_ONCE_THE_FOUNDATION_HAS_A_GITHUB_RELEASE"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this integration
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Check out astra-bepinex (SDK source, pinned commit)
+        uses: actions/checkout@v4
+        with:
+          repository: mihailinl/astra-bepinex
+          ref: ${{ env.ASTRA_BEPINEX_REF }}
+          path: astra-bepinex-sdk-src
+
+      - name: Pack the Astra SDK into a local feed
+        run: |
+          dotnet pack astra-bepinex-sdk-src/src/Astra.Unity.Sdk -c Release \
+            -p:Version=${{ env.ASTRA_SDK_VERSION }} -p:ContinuousIntegrationBuild=true \
+            -o "${{ github.workspace }}/nuget-local"
+
+      - name: Add the local SDK feed
+        run: dotnet nuget add source "${{ github.workspace }}/nuget-local" -n astra-local
+
+      - name: Restore (locked — packages.lock.json pins every version)
+        run: dotnet restore -p:RestoreLockedMode=true
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:TreatWarningsAsErrors=true
+
+      - name: Download BepInEx
+        run: curl -sSL -o bepinex.zip "${{ env.BEPINEX_ZIP_URL }}"
+
+      - name: Verify BepInEx's digest
+        run: echo "${{ env.BEPINEX_ZIP_SHA256 }}  bepinex.zip" | sha256sum -c -
+
+      - name: Unpack BepInEx
+        run: mkdir -p bepinex-dist && unzip -q bepinex.zip -d bepinex-dist
+
+      - name: Download the Astra foundation (TODO until it has a GitHub release)
+        run: |
+          curl -sSL -o foundation.zip "${{ env.FOUNDATION_ASSET_URL }}"
+          echo "${{ env.FOUNDATION_ASSET_SHA256 }}  foundation.zip" | sha256sum -c -
+          mkdir -p "${{ github.workspace }}/foundation-mono"
+          unzip -q foundation.zip -d "${{ github.workspace }}/foundation-mono"
+
+      - name: Lay out astra-gi.zip
+        env:
+          FOUNDATION_DIR: ${{ github.workspace }}/foundation-mono
+          BEPINEX_DIST: ${{ github.workspace }}/bepinex-dist
+        run: bash tools/make-astra-gi.sh
+
+      - name: List astra-gi.zip's entries
+        run: unzip -l astra-gi.zip
+
+      - name: Attach astra-gi.zip to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: astra-gi.zip
