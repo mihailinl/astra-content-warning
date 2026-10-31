@@ -4,15 +4,31 @@ name: release
 # and never could: GitHub Actions has no copy of the game. See docs in astra-bepinex:
 # GAME-INTEGRATION-MANIFEST.md §6 and GAME-INTEGRATIONS.md §2 (the SDK, Astra.Sdk.GameType).
 #
-# Trigger: push a tag "v*". The resulting astra-gi.zip is attached to that tag's GitHub release —
-# that is the one file Astra's installer reads (GAME-INTEGRATION-MANIFEST.md §1).
+# Trigger: push a tag "v*" publishes a GitHub release with astra-gi.zip attached — that is the one
+# file Astra's installer reads (GAME-INTEGRATION-MANIFEST.md §1). A tag with a pre-release suffix
+# (e.g. v1.2.3-rc.1) publishes as a GitHub PRERELEASE and is never marked "latest"; a plain tag
+# keeps today's behaviour. The workflow can also be run by hand (workflow_dispatch): by default
+# (dry_run=true) it only builds the zip and uploads it as a workflow artifact — it attests nothing
+# and publishes nothing, on any ref. With dry_run=false it still only publishes when the ref itself
+# is a tag (a dispatch on a branch just builds and uploads the artifact). The `prerelease` dispatch
+# input forces a prerelease marking for a manual publish off a tag with no pre-release suffix.
 
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build astra-gi.zip only; attest and publish nothing, upload it as a workflow artifact"
+        type: boolean
+        default: true
+      prerelease:
+        description: "Force this release to publish as a GitHub prerelease (ignored on a dry run)"
+        type: boolean
+        default: false
 
 permissions:
-  contents: write   # to attach astra-gi.zip to the release
+  contents: read
 
 env:
   ASSEMBLY_NAME: AstraContentWarning
@@ -37,11 +53,15 @@ env:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write        # attach astra-gi.zip to the tag's release — only this job needs it
+      id-token: write        # actions/attest-build-provenance's Sigstore OIDC identity
+      attestations: write    # actions/attest-build-provenance's attestation upload
     steps:
       - name: Check out this integration
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
 
@@ -85,7 +105,38 @@ jobs:
       - name: List astra-gi.zip's entries
         run: unzip -l astra-gi.zip
 
+      # Future (K4): a `gi-probe compat` check against this release's zip, once
+      # astra-game-launcher 0.5.0 ships the gi-probe binary (dev plan lane L/F). Until then there
+      # is nothing to run it with.
+      # - name: Check compatibility (gi-probe compat)
+      #   run: gi-probe compat --zip astra-gi.zip
+
+      - name: Resolve release mode
+        id: mode
+        run: |
+          {
+            echo "dry_run=${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}"
+            echo "publish=${{ github.ref_type == 'tag' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run == true) }}"
+            echo "prerelease=${{ contains(github.ref_name, '-') || (github.event_name == 'workflow_dispatch' && inputs.prerelease == true) }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload astra-gi.zip as a workflow artifact (not publishing)
+        if: steps.mode.outputs.publish != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: astra-gi
+          path: astra-gi.zip
+
+      - name: Attest astra-gi.zip's build provenance
+        if: steps.mode.outputs.publish == 'true'
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: astra-gi.zip
+
       - name: Attach astra-gi.zip to the release
-        uses: softprops/action-gh-release@v2
+        if: steps.mode.outputs.publish == 'true'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: astra-gi.zip
+          prerelease: ${{ steps.mode.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.mode.outputs.prerelease == 'true' && 'false' || 'true' }}
